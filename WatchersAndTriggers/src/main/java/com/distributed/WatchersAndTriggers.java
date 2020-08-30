@@ -25,20 +25,20 @@ public class WatchersAndTriggers implements Watcher {
 	}
 
 	private void close() throws InterruptedException {
-		this.zooKeeper.close();
+		WatchersAndTriggers.zooKeeper.close();
 
 	}
 
 	void connectToZookeeper() throws IOException {
-		this.zooKeeper = new ZooKeeper(ZOOKEEPER_ADDRESS, SESSION_TIMEOUT, this);
+		WatchersAndTriggers.zooKeeper = new ZooKeeper(ZOOKEEPER_ADDRESS, SESSION_TIMEOUT, this);
 	}
 
 	public void watchTargetNode() throws KeeperException, InterruptedException {
-		Stat stat = this.zooKeeper.exists(TARGET_ZNODE, this);
+		Stat stat = WatchersAndTriggers.zooKeeper.exists(TARGET_ZNODE, this);
 		if (stat == null)
 			return;
-		byte[] data = this.zooKeeper.getData(TARGET_ZNODE, this, stat);
-		List<String> children = this.zooKeeper.getChildren(TARGET_ZNODE, this);
+		byte[] data = WatchersAndTriggers.zooKeeper.getData(TARGET_ZNODE, this, stat);
+		List<String> children = WatchersAndTriggers.zooKeeper.getChildren(TARGET_ZNODE, this);
 
 		System.out.println("Target Node Data : " + new String(data) + " children are " + children);
 	}

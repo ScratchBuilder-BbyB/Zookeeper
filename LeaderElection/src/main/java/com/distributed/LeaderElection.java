@@ -10,6 +10,7 @@ import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.data.Stat;
 
 public class LeaderElection implements Watcher {
 
@@ -37,16 +38,30 @@ public class LeaderElection implements Watcher {
 		System.out.println("znode name : " + zNodeFullPath);
 		this.currentZnodeName = zNodeFullPath.replace(ELECTION_NAMESPACE + "/", "");
 	}
-	
+
 	void electLeader() throws KeeperException, InterruptedException {
-		List<String> children = this.zooKeeper.getChildren(ELECTION_NAMESPACE, false);
-		
-		Collections.sort(children);
-		String leaderZnode = children.get(0);
-		if(leaderZnode.equals(currentZnodeName))
-			System.out.println("I am the leader.");
-		else
-			System.out.println("The leader is "+ leaderZnode + " . I am "+ currentZnodeName);
+		String nodeToBeWatched = null;
+		Stat predecessorStat = null;
+		while (predecessorStat == null) {
+			List<String> children = this.zooKeeper.getChildren(ELECTION_NAMESPACE, false);
+
+			Collections.sort(children);
+			String leaderZnode = children.get(0);
+			if (leaderZnode.equals(currentZnodeName)) {
+				System.out.println("I am the leader.");
+				return;
+			}
+			else {
+				System.out.println("The leader is " + leaderZnode + " . I am " + currentZnodeName);
+				int predecessorIndex = Collections.binarySearch(children, currentZnodeName) - 1; // each node will watch its previous node to avoid Herd Effect
+				nodeToBeWatched = children.get(predecessorIndex);
+				predecessorStat = this.zooKeeper.exists(ELECTION_NAMESPACE + "/" + nodeToBeWatched, this);
+			}
+
+		}
+
+		System.out.println("Watching node : " + nodeToBeWatched);
+
 	}
 
 	private void close() throws InterruptedException {
@@ -68,6 +83,17 @@ public class LeaderElection implements Watcher {
 					System.out.println("Disconnected from zookeeper event");
 					zooKeeper.notifyAll();
 				}
+			}
+			break;
+		case NodeDeleted:
+			try {
+				electLeader();
+			} catch (KeeperException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
 			break;
 
